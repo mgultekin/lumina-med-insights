@@ -18,6 +18,9 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        medical: "bg-medical-primary text-medical-primary-foreground hover:bg-medical-primary/90 medical-shadow transition-all duration-200",
+        "medical-accent": "bg-medical-accent text-medical-accent-foreground hover:bg-medical-accent/90",
+        clinical: "bg-clinical-surface text-medical-primary border border-border hover:bg-background clinical-shadow",
       },
       size: {
         default: "h-10 px-4 py-2",

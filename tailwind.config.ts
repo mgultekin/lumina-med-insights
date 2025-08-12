@@ -18,6 +18,9 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				medical: 'var(--font-medical)',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -61,6 +64,20 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Medical-specific color palette
+				medical: {
+					primary: 'hsl(var(--medical-primary))',
+					'primary-foreground': 'hsl(var(--medical-primary-foreground))',
+					accent: 'hsl(var(--medical-accent))',
+					'accent-foreground': 'hsl(var(--medical-accent-foreground))',
+					success: 'hsl(var(--medical-success))',
+					warning: 'hsl(var(--medical-warning))',
+					info: 'hsl(var(--medical-info))',
+				},
+				clinical: {
+					background: 'hsl(var(--clinical-background))',
+					surface: 'hsl(var(--clinical-surface))',
 				}
 			},
 			borderRadius: {
