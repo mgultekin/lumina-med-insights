@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +15,8 @@ export const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,9 +29,11 @@ export const Signup = () => {
     setIsLoading(true);
     
     try {
-      // TODO: Implement Supabase authentication
-      console.log("Signup attempt:", { email, password, fullName });
-      // On success: navigate to /dashboard
+      const { error } = await signUp(email, password, fullName);
+      
+      if (!error) {
+        navigate('/dashboard');
+      }
     } catch (error) {
       console.error("Signup error:", error);
     } finally {
