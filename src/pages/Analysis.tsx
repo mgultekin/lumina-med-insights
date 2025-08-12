@@ -369,21 +369,12 @@ export const Analysis = () => {
           </Button>
 
           <Button
-            onClick={handleGenerateArticle}
-            disabled={!analysis.analysis_result || isGeneratingArticle}
+            onClick={() => navigate(`/templates/${analysis.id}`)}
+            disabled={!analysis.analysis_result}
             variant="outline"
           >
-            {isGeneratingArticle ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Generate Article
-              </>
-            )}
+            <FileText className="mr-2 h-4 w-4" />
+            Generate Article
           </Button>
 
           <Button

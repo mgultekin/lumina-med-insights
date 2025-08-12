@@ -30,6 +30,7 @@ export type Database = {
           report_text: string | null
           status: string
           task: string | null
+          template_key: string | null
           updated_at: string
           user_id: string
         }
@@ -48,6 +49,7 @@ export type Database = {
           report_text?: string | null
           status?: string
           task?: string | null
+          template_key?: string | null
           updated_at?: string
           user_id: string
         }
@@ -66,6 +68,7 @@ export type Database = {
           report_text?: string | null
           status?: string
           task?: string | null
+          template_key?: string | null
           updated_at?: string
           user_id?: string
         }

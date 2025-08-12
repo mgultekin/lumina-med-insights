@@ -9,6 +9,7 @@ import { Signup } from "./pages/auth/Signup";
 import { Dashboard } from "./pages/Dashboard";
 import { NewAnalysis } from "./pages/NewAnalysis";
 import { Analysis } from "./pages/Analysis";
+import { Templates } from "./pages/Templates";
 import { Article } from "./pages/Article";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -40,6 +41,11 @@ const App = () => (
             <Route path="/analysis/:id" element={
               <ProtectedRoute>
                 <Analysis />
+              </ProtectedRoute>
+            } />
+            <Route path="/templates/:id" element={
+              <ProtectedRoute>
+                <Templates />
               </ProtectedRoute>
             } />
             <Route path="/article/:id" element={

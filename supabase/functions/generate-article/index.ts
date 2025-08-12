@@ -19,9 +19,27 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     )
 
-    const { analysis_id, analysis_result, report_text, title } = await req.json()
+    const { 
+      analysis_id, 
+      analysis_result, 
+      report_text, 
+      title, 
+      template_key, 
+      tone, 
+      keywords, 
+      citations, 
+      use_report, 
+      use_analysis 
+    } = await req.json()
 
-    console.log('Received article generation request:', { analysis_id, title })
+    console.log('Received article generation request:', { 
+      analysis_id, 
+      title, 
+      template_key, 
+      tone, 
+      keywords, 
+      citations 
+    })
 
     // Call external webhook
     const webhookUrl = Deno.env.get('GENERATE_ARTICLE_WEBHOOK_URL')
@@ -41,7 +59,13 @@ serve(async (req) => {
         analysis_id,
         analysis_result,
         report_text,
-        title
+        title,
+        template_key,
+        tone,
+        keywords,
+        citations,
+        use_report,
+        use_analysis
       })
     })
 
