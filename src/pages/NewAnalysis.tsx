@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
 export const NewAnalysis = () => {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [modality, setModality] = useState("");
   const [bodyRegion, setBodyRegion] = useState("");
   const [notes, setNotes] = useState("");
@@ -25,31 +25,19 @@ export const NewAnalysis = () => {
   const navigate = useNavigate();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !user) return;
+    if (!files.length || !user) return;
 
     setIsLoading(true);
 
     try {
-      // Upload file to Supabase Storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('medical-images')
-        .upload(fileName, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      // Create analysis record
+      // Create analysis record first
       const { data: analysisData, error: analysisError } = await supabase
         .from('analyses')
         .insert([
@@ -58,8 +46,8 @@ export const NewAnalysis = () => {
             modality,
             body_region: bodyRegion,
             notes,
-            image_path: uploadData.path,
-            status: 'uploaded'
+            status: 'uploaded',
+            image_paths: []
           }
         ])
         .select()
@@ -69,13 +57,41 @@ export const NewAnalysis = () => {
         throw analysisError;
       }
 
+      // Upload files to storage
+      const uploadPromises = files.map(async (file, index) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/${analysisData.id}/${index}_${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('medical-images')
+          .upload(fileName, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        return uploadData.path;
+      });
+
+      const imagePaths = await Promise.all(uploadPromises);
+
+      // Update analysis with image paths
+      const { error: updateError } = await supabase
+        .from('analyses')
+        .update({ image_paths: imagePaths })
+        .eq('id', analysisData.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
       // Call analyze webhook
       try {
         const { data, error } = await supabase.functions.invoke('analyze-medical-image', {
           body: {
             analysis_id: analysisData.id,
             user_id: user.id,
-            image_path: uploadData.path,
+            image_paths: imagePaths,
             modality,
             body_region: bodyRegion,
             notes,
@@ -95,7 +111,7 @@ export const NewAnalysis = () => {
         console.error('Webhook error:', webhookError);
         toast({
           title: "Analysis Queued",
-          description: "Your image has been uploaded and queued for analysis.",
+          description: "Your images have been uploaded and queued for analysis.",
         });
         navigate(`/analysis/${analysisData.id}`);
       }
@@ -147,11 +163,15 @@ export const NewAnalysis = () => {
                             <p className="text-xs text-muted-foreground">
                               DICOM, JPEG, PNG, TIFF files supported
                             </p>
-                            {file && (
-                              <div className="mt-4 px-4 py-2 bg-secondary/10 rounded-lg">
-                                <p className="text-sm text-secondary font-medium">
-                                  {file.name}
-                                </p>
+                            {files.length > 0 && (
+                              <div className="mt-4 space-y-2">
+                                {files.map((file, index) => (
+                                  <div key={index} className="px-4 py-2 bg-secondary/10 rounded-lg">
+                                    <p className="text-sm text-secondary font-medium">
+                                      {file.name}
+                                    </p>
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
@@ -161,7 +181,7 @@ export const NewAnalysis = () => {
                             className="hidden"
                             accept={acceptedFileTypes}
                             onChange={handleFileChange}
-                            required
+                            multiple
                           />
                         </label>
                       </div>
@@ -231,7 +251,7 @@ export const NewAnalysis = () => {
                     <Button 
                       type="submit" 
                       className="w-full mt-8 h-12 text-base font-medium bg-medical-primary hover:bg-medical-primary/90"
-                      disabled={!file || !modality || !bodyRegion || !template || isLoading}
+                      disabled={!files.length || !modality || !bodyRegion || !template || isLoading}
                     >
                       {isLoading ? (
                         <>

@@ -19,9 +19,9 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     )
 
-    const { analysis_id, user_id, image_path, modality, body_region, notes, template } = await req.json()
+    const { analysis_id, user_id, image_paths, modality, body_region, notes, template } = await req.json()
 
-    console.log('Received analysis request:', { analysis_id, user_id, modality, body_region, template })
+    console.log('Received analysis request:', { analysis_id, user_id, modality, body_region, template, image_count: image_paths?.length })
 
     // Update status to analyzing
     await supabaseClient
@@ -46,7 +46,7 @@ serve(async (req) => {
       body: JSON.stringify({
         analysis_id,
         user_id,
-        image_path,
+        image_paths,
         modality,
         body_region,
         notes,

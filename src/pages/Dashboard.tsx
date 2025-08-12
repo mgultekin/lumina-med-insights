@@ -15,8 +15,11 @@ interface Analysis {
   status: string;
   modality: string;
   body_region: string;
-  image_path: string;
+  image_paths: string[];
   analysis_result: string;
+  report_text: string;
+  article_text: string;
+  published_url: string;
 }
 
 export const Dashboard = () => {
@@ -36,12 +39,28 @@ export const Dashboard = () => {
     try {
       const { data, error } = await supabase
         .from('analyses')
-        .select('id, created_at, status, modality, body_region, image_path, analysis_result')
+        .select('*')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAnalyses(data || []);
+      
+      // Transform the data to ensure image_paths is properly typed
+      const transformedData = (data || []).map(item => ({
+        ...item,
+        image_paths: Array.isArray(item.image_paths) ? 
+          item.image_paths.filter((path): path is string => typeof path === 'string') : 
+          typeof item.image_paths === 'string' ? [item.image_paths] : [],
+        analysis_result: item.analysis_result || '',
+        report_text: item.report_text || '',
+        article_text: item.article_text || '',
+        published_url: item.published_url || '',
+        modality: item.modality || '',
+        body_region: item.body_region || '',
+        notes: item.notes || ''
+      }));
+      
+      setAnalyses(transformedData);
     } catch (error: any) {
       console.error('Error:', error);
       toast({
@@ -54,12 +73,12 @@ export const Dashboard = () => {
     }
   };
 
-  const handleDelete = async (id: string, imagePath: string) => {
+  const handleDelete = async (id: string, imagePaths: string[]) => {
     if (!confirm('Are you sure you want to delete this analysis?')) return;
 
     try {
-      if (imagePath) {
-        await supabase.storage.from('medical-images').remove([imagePath]);
+      if (imagePaths && imagePaths.length > 0) {
+        await supabase.storage.from('medical-images').remove(imagePaths);
       }
 
       const { error } = await supabase
@@ -81,6 +100,18 @@ export const Dashboard = () => {
         description: "Failed to delete analysis",
         variant: "destructive"
       });
+    }
+  };
+
+  const getImageThumbnail = async (imagePath: string) => {
+    if (!imagePath) return null;
+    try {
+      const { data } = await supabase.storage
+        .from('medical-images')
+        .createSignedUrl(imagePath, 3600);
+      return data?.signedUrl || null;
+    } catch {
+      return null;
     }
   };
 
@@ -157,13 +188,22 @@ export const Dashboard = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="aspect-square bg-clinical-surface rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <Eye className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-xs text-muted-foreground">
-                        {analysis.image_path?.split('/').pop()}
-                      </p>
-                    </div>
+                  <div className="aspect-square bg-clinical-surface rounded-lg flex items-center justify-center overflow-hidden">
+                    {analysis.image_paths && analysis.image_paths.length > 0 ? (
+                      <div className="text-center">
+                        <div className="w-full h-full bg-muted/20 rounded flex items-center justify-center">
+                          <FileText className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {analysis.image_paths.length} file{analysis.image_paths.length > 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Eye className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">No images</p>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
@@ -190,16 +230,17 @@ export const Dashboard = () => {
                     
                     {analysis.analysis_result && (
                       <Button 
-                        onClick={() => navigate(`/article/${analysis.id}`)}
+                        onClick={() => navigate(`/analysis/${analysis.id}`)}
                         variant="outline" 
                         size="sm"
+                        className="text-secondary hover:text-secondary"
                       >
                         <FileText className="h-3 w-3" />
                       </Button>
                     )}
                     
                     <Button 
-                      onClick={() => handleDelete(analysis.id, analysis.image_path)}
+                      onClick={() => handleDelete(analysis.id, analysis.image_paths || [])}
                       variant="outline" 
                       size="sm"
                       className="text-destructive hover:text-destructive"
