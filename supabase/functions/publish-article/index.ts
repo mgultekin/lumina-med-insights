@@ -19,9 +19,16 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     )
 
-    const { analysis_id, article_text, title } = await req.json()
+    const { 
+      analysis_id, 
+      article_text, 
+      article_title, 
+      tone, 
+      keywords, 
+      citations 
+    } = await req.json()
 
-    console.log('Received article publish request:', { analysis_id, title })
+    console.log('Received article publish request:', { analysis_id, article_title })
 
     // Call external webhook
     const webhookUrl = Deno.env.get('PUBLISH_ARTICLE_WEBHOOK_URL')
@@ -40,7 +47,10 @@ serve(async (req) => {
       body: JSON.stringify({
         analysis_id,
         article_text,
-        title
+        article_title,
+        tone,
+        keywords,
+        citations
       })
     })
 
@@ -49,21 +59,23 @@ serve(async (req) => {
     }
 
     const result = await webhookResponse.json()
-    const publishedUrl = result.published_url || `https://medical-research.lumina.ai/article/${analysis_id}`
     
-    // Update analysis with published URL
+    // Update analysis with published URL and status
     await supabaseClient
       .from('analyses')
       .update({ 
         status: 'published',
-        published_url: publishedUrl
+        published_url: result.published_url || `https://example.com/articles/${analysis_id}`
       })
       .eq('id', analysis_id)
 
     console.log('Article published successfully')
 
     return new Response(
-      JSON.stringify({ success: true, published_url: publishedUrl }),
+      JSON.stringify({ 
+        success: true, 
+        published_url: result.published_url || `https://example.com/articles/${analysis_id}` 
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 

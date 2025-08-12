@@ -18,11 +18,14 @@ export type Database = {
         Row: {
           analysis_result: string | null
           article_text: string | null
+          article_title: string | null
           body_region: string | null
+          citations: Json | null
           created_at: string
           id: string
           image_path: string | null
           image_paths: Json | null
+          keywords: Json | null
           modality: string | null
           model: string | null
           notes: string | null
@@ -31,17 +34,21 @@ export type Database = {
           status: string
           task: string | null
           template_key: string | null
+          tone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           analysis_result?: string | null
           article_text?: string | null
+          article_title?: string | null
           body_region?: string | null
+          citations?: Json | null
           created_at?: string
           id?: string
           image_path?: string | null
           image_paths?: Json | null
+          keywords?: Json | null
           modality?: string | null
           model?: string | null
           notes?: string | null
@@ -50,17 +57,21 @@ export type Database = {
           status?: string
           task?: string | null
           template_key?: string | null
+          tone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           analysis_result?: string | null
           article_text?: string | null
+          article_title?: string | null
           body_region?: string | null
+          citations?: Json | null
           created_at?: string
           id?: string
           image_path?: string | null
           image_paths?: Json | null
+          keywords?: Json | null
           modality?: string | null
           model?: string | null
           notes?: string | null
@@ -69,6 +80,7 @@ export type Database = {
           status?: string
           task?: string | null
           template_key?: string | null
+          tone?: string | null
           updated_at?: string
           user_id?: string
         }
