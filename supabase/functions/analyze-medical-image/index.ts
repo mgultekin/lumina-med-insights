@@ -19,7 +19,7 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     )
 
-    const { analysis_id, user_id, image_paths, modality, body_region, notes, template } = await req.json()
+    const { analysis_id, user_id, image_paths, modality, body_region, notes, template, model, task } = await req.json()
 
     console.log('Received analysis request:', { analysis_id, user_id, modality, body_region, template, image_count: image_paths?.length })
 
@@ -50,7 +50,9 @@ serve(async (req) => {
         modality,
         body_region,
         notes,
-        template
+        template,
+        model,
+        task
       })
     })
 

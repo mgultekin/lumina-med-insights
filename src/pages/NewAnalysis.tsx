@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Layout } from "@/components/layout/Layout";
 import { Upload, FileText, Loader2 } from "lucide-react";
@@ -18,6 +19,8 @@ export const NewAnalysis = () => {
   const [bodyRegion, setBodyRegion] = useState("");
   const [notes, setNotes] = useState("");
   const [template, setTemplate] = useState("");
+  const [model, setModel] = useState("gpt-4o-mini-vision");
+  const [task, setTask] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
   const { user } = useAuth();
@@ -47,7 +50,9 @@ export const NewAnalysis = () => {
             body_region: bodyRegion,
             notes,
             status: 'uploaded',
-            image_paths: []
+            image_paths: [],
+            model,
+            task
           }
         ])
         .select()
@@ -95,7 +100,9 @@ export const NewAnalysis = () => {
             modality,
             body_region: bodyRegion,
             notes,
-            template
+            template,
+            model,
+            task
           }
         });
 
@@ -187,6 +194,96 @@ export const NewAnalysis = () => {
                       </div>
                     </div>
 
+                    {/* Model Selection */}
+                    <div className="mb-8">
+                      <Label className="text-sm font-medium mb-4 block">AI Model</Label>
+                      <RadioGroup value={model} onValueChange={setModel}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Card className="cursor-pointer transition-colors hover:bg-accent/50 border-2" data-state={model === "gpt-4o-vision" ? "checked" : "unchecked"}>
+                            <div className="flex items-center space-x-3 p-4">
+                              <RadioGroupItem value="gpt-4o-vision" />
+                              <div>
+                                <p className="font-medium">GPT‑4o vision</p>
+                                <p className="text-sm text-muted-foreground">Most capable model</p>
+                              </div>
+                            </div>
+                          </Card>
+                          <Card className="cursor-pointer transition-colors hover:bg-accent/50 border-2" data-state={model === "gpt-4o-mini-vision" ? "checked" : "unchecked"}>
+                            <div className="flex items-center space-x-3 p-4">
+                              <RadioGroupItem value="gpt-4o-mini-vision" />
+                              <div>
+                                <p className="font-medium">GPT‑4o mini vision</p>
+                                <p className="text-sm text-muted-foreground">Fast and efficient</p>
+                              </div>
+                            </div>
+                          </Card>
+                          <Card className="cursor-pointer transition-colors hover:bg-accent/50 border-2" data-state={model === "gemini-2.0-flash" ? "checked" : "unchecked"}>
+                            <div className="flex items-center space-x-3 p-4">
+                              <RadioGroupItem value="gemini-2.0-flash" />
+                              <div>
+                                <p className="font-medium">Gemini 2.0 Flash</p>
+                                <p className="text-sm text-muted-foreground">Lightning fast analysis</p>
+                              </div>
+                            </div>
+                          </Card>
+                          <Card className="cursor-pointer transition-colors hover:bg-accent/50 border-2" data-state={model === "gemini-2.5-pro" ? "checked" : "unchecked"}>
+                            <div className="flex items-center space-x-3 p-4">
+                              <RadioGroupItem value="gemini-2.5-pro" />
+                              <div>
+                                <p className="font-medium">Gemini 2.5 Pro</p>
+                                <p className="text-sm text-muted-foreground">Premium model</p>
+                              </div>
+                            </div>
+                          </Card>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {/* Task Selection */}
+                    <div className="mb-8">
+                      <Label className="text-sm font-medium mb-4 block">Analysis Task</Label>
+                      <RadioGroup value={task} onValueChange={setTask} required>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Card className="cursor-pointer transition-colors hover:bg-accent/50 border-2" data-state={task === "diagnosis" ? "checked" : "unchecked"}>
+                            <div className="flex items-center space-x-3 p-4">
+                              <RadioGroupItem value="diagnosis" />
+                              <div>
+                                <p className="font-medium">Diagnosis</p>
+                                <p className="text-sm text-muted-foreground">General diagnostic analysis</p>
+                              </div>
+                            </div>
+                          </Card>
+                          <Card className="cursor-pointer transition-colors hover:bg-accent/50 border-2" data-state={task === "disease-specific" ? "checked" : "unchecked"}>
+                            <div className="flex items-center space-x-3 p-4">
+                              <RadioGroupItem value="disease-specific" />
+                              <div>
+                                <p className="font-medium">Specific Disease</p>
+                                <p className="text-sm text-muted-foreground">Targeted disease analysis</p>
+                              </div>
+                            </div>
+                          </Card>
+                          <Card className="cursor-pointer transition-colors hover:bg-accent/50 border-2" data-state={task === "segmentation" ? "checked" : "unchecked"}>
+                            <div className="flex items-center space-x-3 p-4">
+                              <RadioGroupItem value="segmentation" />
+                              <div>
+                                <p className="font-medium">Measurement/Segmentation</p>
+                                <p className="text-sm text-muted-foreground">Quantitative analysis</p>
+                              </div>
+                            </div>
+                          </Card>
+                          <Card className="cursor-pointer transition-colors hover:bg-accent/50 border-2" data-state={task === "academic" ? "checked" : "unchecked"}>
+                            <div className="flex items-center space-x-3 p-4">
+                              <RadioGroupItem value="academic" />
+                              <div>
+                                <p className="font-medium">Research/Academic</p>
+                                <p className="text-sm text-muted-foreground">Scientific analysis</p>
+                              </div>
+                            </div>
+                          </Card>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
                     {/* Form Controls */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Modality */}
@@ -251,7 +348,7 @@ export const NewAnalysis = () => {
                     <Button 
                       type="submit" 
                       className="w-full mt-8 h-12 text-base font-medium bg-medical-primary hover:bg-medical-primary/90"
-                      disabled={!files.length || !modality || !bodyRegion || !template || isLoading}
+                      disabled={!files.length || !modality || !bodyRegion || !template || !task || isLoading}
                     >
                       {isLoading ? (
                         <>

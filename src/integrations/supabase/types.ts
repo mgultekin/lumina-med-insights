@@ -24,10 +24,12 @@ export type Database = {
           image_path: string | null
           image_paths: Json | null
           modality: string | null
+          model: string | null
           notes: string | null
           published_url: string | null
           report_text: string | null
           status: string
+          task: string | null
           updated_at: string
           user_id: string
         }
@@ -40,10 +42,12 @@ export type Database = {
           image_path?: string | null
           image_paths?: Json | null
           modality?: string | null
+          model?: string | null
           notes?: string | null
           published_url?: string | null
           report_text?: string | null
           status?: string
+          task?: string | null
           updated_at?: string
           user_id: string
         }
@@ -56,10 +60,12 @@ export type Database = {
           image_path?: string | null
           image_paths?: Json | null
           modality?: string | null
+          model?: string | null
           notes?: string | null
           published_url?: string | null
           report_text?: string | null
           status?: string
+          task?: string | null
           updated_at?: string
           user_id?: string
         }
