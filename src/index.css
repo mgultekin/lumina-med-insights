@@ -7,19 +7,19 @@
 
 @layer base {
   :root {
-    /* Medical Primary - Deep Dark Blue */
-    --medical-primary: 209 65% 14%;  /* #0D2233 */
+    /* Medical Primary - Lumina Deep Dark Blue */
+    --medical-primary: 203 64% 20%;  /* #123C54 */
     --medical-primary-foreground: 0 0% 100%;
     
-    /* Medical Accent - Diagnostic Cyan */
-    --medical-accent: 190 75% 45%;  /* #1CA9C9 */
+    /* Medical Accent - Lumina Light Teal */
+    --medical-accent: 193 75% 45%;  /* #1CA9C9 */
     --medical-accent-foreground: 0 0% 100%;
     
-    /* Clinical Background */
-    --clinical-background: 217 33% 97%;  /* #F6F8FB */
+    /* Clinical Background - Clean White & Light Tones */
+    --clinical-background: 0 0% 100%;  /* Pure white */
     --clinical-surface: 0 0% 100%;
     
-    /* Semantic Design Tokens */
+    /* Semantic Design Tokens - Lumina Minimalist */
     --background: var(--clinical-background);
     --foreground: var(--medical-primary);
 
@@ -32,11 +32,11 @@
     --primary: var(--medical-primary);
     --primary-foreground: var(--medical-primary-foreground);
 
-    --secondary: 217 20% 90%;
-    --secondary-foreground: var(--medical-primary);
+    --secondary: var(--medical-accent);
+    --secondary-foreground: var(--medical-accent-foreground);
 
-    --muted: 217 20% 95%;
-    --muted-foreground: 209 15% 50%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 203 30% 45%;
 
     --accent: var(--medical-accent);
     --accent-foreground: var(--medical-accent-foreground);
@@ -44,8 +44,8 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217 20% 88%;
-    --input: 217 20% 88%;
+    --border: 210 40% 88%;
+    --input: 210 40% 88%;
     --ring: var(--medical-accent);
 
     --radius: 0.75rem;
@@ -130,6 +130,8 @@
   body {
     @apply bg-background text-foreground font-medical;
     font-feature-settings: 'cv11', 'ss01';
+    font-weight: 400;
+    letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
