@@ -117,126 +117,198 @@ export const NewAnalysis = () => {
   return (
     <Layout>
       <div className="container mx-auto px-6 py-8">
-        <div className="max-w-2xl mx-auto">
-          <Card className="clinical-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-6 w-6 text-medical-primary" />
-                <span>New Medical Image Analysis</span>
-              </CardTitle>
-              <CardDescription>
-                Upload a medical image for AI-powered analysis and insights
-              </CardDescription>
-            </CardHeader>
+        <div className="max-w-4xl mx-auto">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-semibold text-medical-primary mb-2">Medical Image Analysis</h1>
+            <p className="text-muted-foreground">Analyze medical images using advanced AI models</p>
+          </div>
 
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-6">
-                {/* File Upload */}
-                <div className="space-y-2">
-                  <Label htmlFor="file">Medical Image</Label>
-                  <div className="flex items-center justify-center w-full">
-                    <label htmlFor="file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-muted rounded-lg cursor-pointer bg-clinical-surface hover:bg-muted/50 transition-colors">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
-                        <p className="mb-2 text-sm text-muted-foreground">
-                          <span className="font-semibold">Click to upload</span> or drag and drop
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          DICOM, JPEG, PNG, TIFF files supported
-                        </p>
-                        {file && (
-                          <p className="mt-2 text-sm text-medical-primary font-medium">
-                            Selected: {file.name}
-                          </p>
-                        )}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Upload Card */}
+            <div className="lg:col-span-2">
+              <Card className="clinical-shadow">
+                <form onSubmit={handleSubmit}>
+                  <CardContent className="p-8">
+                    {/* File Upload Section */}
+                    <div className="mb-8">
+                      <div className="flex items-center justify-center w-full">
+                        <label htmlFor="file" className="flex flex-col items-center justify-center w-full h-80 border-2 border-dashed border-muted-foreground/20 rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <div className="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mb-4">
+                              <Upload className="w-8 h-8 text-muted-foreground" />
+                            </div>
+                            <p className="mb-2 text-lg font-medium text-foreground">
+                              Upload an image
+                            </p>
+                            <p className="text-sm text-muted-foreground mb-1">
+                              or drag and drop
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              DICOM, JPEG, PNG, TIFF files supported
+                            </p>
+                            {file && (
+                              <div className="mt-4 px-4 py-2 bg-secondary/10 rounded-lg">
+                                <p className="text-sm text-secondary font-medium">
+                                  {file.name}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <Input
+                            id="file"
+                            type="file"
+                            className="hidden"
+                            accept={acceptedFileTypes}
+                            onChange={handleFileChange}
+                            required
+                          />
+                        </label>
                       </div>
-                      <Input
-                        id="file"
-                        type="file"
-                        className="hidden"
-                        accept={acceptedFileTypes}
-                        onChange={handleFileChange}
-                        required
+                    </div>
+
+                    {/* Form Controls */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Modality */}
+                      <div className="space-y-2">
+                        <Label htmlFor="modality" className="text-sm font-medium">Imaging Modality</Label>
+                        <Select value={modality} onValueChange={setModality} required>
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Select modality" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MRI">MRI</SelectItem>
+                            <SelectItem value="CT">CT Scan</SelectItem>
+                            <SelectItem value="X-ray">X-ray</SelectItem>
+                            <SelectItem value="Ultrasound">Ultrasound</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Body Region */}
+                      <div className="space-y-2">
+                        <Label htmlFor="bodyRegion" className="text-sm font-medium">Body Region</Label>
+                        <Input
+                          id="bodyRegion"
+                          type="text"
+                          placeholder="e.g., Head, Chest, Abdomen"
+                          value={bodyRegion}
+                          onChange={(e) => setBodyRegion(e.target.value)}
+                          className="h-11"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Analysis Template */}
+                    <div className="mt-6 space-y-2">
+                      <Label htmlFor="template" className="text-sm font-medium">Analysis Template</Label>
+                      <Select value={template} onValueChange={setTemplate} required>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Select analysis type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="general">General Diagnostic</SelectItem>
+                          <SelectItem value="disease-specific">Disease-Specific</SelectItem>
+                          <SelectItem value="research">Research/Academic</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Notes */}
+                    <div className="mt-6 space-y-2">
+                      <Label htmlFor="notes" className="text-sm font-medium">Clinical Notes (Optional)</Label>
+                      <Textarea
+                        id="notes"
+                        placeholder="Any additional clinical context, patient history, or specific areas of concern..."
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="min-h-[120px] resize-none"
                       />
-                    </label>
+                    </div>
+
+                    <Button 
+                      type="submit" 
+                      className="w-full mt-8 h-12 text-base font-medium bg-medical-primary hover:bg-medical-primary/90"
+                      disabled={!file || !modality || !bodyRegion || !template || isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Running analysis...
+                        </>
+                      ) : (
+                        "Run analysis"
+                      )}
+                    </Button>
+                  </CardContent>
+                </form>
+              </Card>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* AI Model Card */}
+              <Card className="clinical-shadow">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg">AI model</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="p-3 border rounded-lg bg-secondary/5 border-secondary/20">
+                      <p className="font-medium text-secondary">GPT-4</p>
+                      <p className="text-sm text-muted-foreground">Advanced medical image analysis</p>
+                    </div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                {/* Modality */}
-                <div className="space-y-2">
-                  <Label htmlFor="modality">Imaging Modality</Label>
-                  <Select value={modality} onValueChange={setModality} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select imaging modality" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MRI">MRI</SelectItem>
-                      <SelectItem value="CT">CT Scan</SelectItem>
-                      <SelectItem value="X-ray">X-ray</SelectItem>
-                      <SelectItem value="Ultrasound">Ultrasound</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Task Card */}
+              <Card className="clinical-shadow">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg">Task</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="p-3 border rounded-lg bg-primary/5 border-primary/20">
+                      <p className="font-medium text-primary">Diagnosis</p>
+                      <p className="text-sm text-muted-foreground">Comprehensive medical analysis</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* Body Region */}
-                <div className="space-y-2">
-                  <Label htmlFor="bodyRegion">Body Region</Label>
-                  <Input
-                    id="bodyRegion"
-                    type="text"
-                    placeholder="e.g., Head, Chest, Abdomen, Extremities"
-                    value={bodyRegion}
-                    onChange={(e) => setBodyRegion(e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Analysis Template */}
-                <div className="space-y-2">
-                  <Label htmlFor="template">Analysis Template</Label>
-                  <Select value={template} onValueChange={setTemplate} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select analysis template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">General Diagnostic</SelectItem>
-                      <SelectItem value="disease-specific">Disease-Specific</SelectItem>
-                      <SelectItem value="research">Research/Academic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Notes */}
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Clinical Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Any additional clinical context, patient history, or specific areas of concern..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                </div>
-
-                <Button 
-                  type="submit" 
-                  variant="medical" 
-                  className="w-full"
-                  disabled={!file || !modality || !bodyRegion || !template || isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    "Start Analysis"
-                  )}
-                </Button>
-              </CardContent>
-            </form>
-          </Card>
+              {/* Features */}
+              <Card className="clinical-shadow">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg">Features</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-5 h-5 rounded-full bg-secondary/20 flex items-center justify-center mt-0.5">
+                        <div className="w-2 h-2 rounded-full bg-secondary"></div>
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Leading AI models</p>
+                        <p className="text-xs text-muted-foreground">Advanced image analysis capabilities</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-5 h-5 rounded-full bg-secondary/20 flex items-center justify-center mt-0.5">
+                        <div className="w-2 h-2 rounded-full bg-secondary"></div>
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Academic articles</p>
+                        <p className="text-xs text-muted-foreground">Generate research-ready content</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     </Layout>
