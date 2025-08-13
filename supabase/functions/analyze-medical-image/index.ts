@@ -50,7 +50,7 @@ serve(async (req) => {
         modality,
         body_region,
         notes,
-        template,
+        template: template || 'General Diagnostic',
         model,
         task
       })
@@ -67,14 +67,14 @@ serve(async (req) => {
       .from('analyses')
       .update({ 
         status: 'analyzed',
-        analysis_result: result.analysis_result || 'Analysis completed successfully'
+        analysis_result: result.analysisResult || 'Analysis completed successfully'
       })
       .eq('id', analysis_id)
 
     console.log('Analysis completed successfully')
 
     return new Response(
-      JSON.stringify({ success: true, analysis_result: result.analysis_result }),
+      JSON.stringify({ success: true, analysisResult: result.analysisResult }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 

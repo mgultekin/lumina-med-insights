@@ -100,7 +100,7 @@ export const NewAnalysis = () => {
             modality,
             body_region: bodyRegion,
             notes,
-            template,
+            template: template || 'General Diagnostic',
             model,
             task
           }
@@ -108,9 +108,20 @@ export const NewAnalysis = () => {
 
         if (error) throw error;
 
+        // Update analysis with status and result
+        if (data?.analysisResult) {
+          await supabase
+            .from('analyses')
+            .update({ 
+              status: 'analyzed', 
+              analysis_result: data.analysisResult 
+            })
+            .eq('id', analysisData.id);
+        }
+
         toast({
           title: "Success",
-          description: "Analysis started successfully. You'll be redirected to view the results.",
+          description: "Analysis completed successfully. You'll be redirected to view the results.",
         });
 
         navigate(`/analysis/${analysisData.id}`);
