@@ -10,6 +10,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { NewAnalysis } from "./pages/NewAnalysis";
 import { Analysis } from "./pages/Analysis";
 import { Templates } from "./pages/Templates";
+import { TemplatesPreview } from "./pages/TemplatesPreview";
 import { Article } from "./pages/Article";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -46,6 +47,11 @@ const App = () => (
             <Route path="/templates/:id" element={
               <ProtectedRoute>
                 <Templates />
+              </ProtectedRoute>
+            } />
+            <Route path="/templates" element={
+              <ProtectedRoute>
+                <TemplatesPreview />
               </ProtectedRoute>
             } />
             <Route path="/article/:id" element={
