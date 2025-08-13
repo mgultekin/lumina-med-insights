@@ -75,11 +75,13 @@ export const DemoCases = () => {
 
   const getImageThumbnail = async (imagePath: string): Promise<string | null> => {
     try {
-      const { data } = await supabase.rpc('sign_image', {
-        p_path: imagePath,
-        expires: 3600
-      });
-      return data;
+      // For demo images, use public URL since the bucket is public
+      if (imagePath.startsWith('demo-images/')) {
+        const fileName = imagePath.replace('demo-images/', '');
+        const { data } = supabase.storage.from('demo-images').getPublicUrl(fileName);
+        return data.publicUrl;
+      }
+      return null;
     } catch (error) {
       console.error('Error getting image thumbnail:', error);
       return null;

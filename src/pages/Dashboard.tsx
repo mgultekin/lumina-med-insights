@@ -139,13 +139,16 @@ export const Dashboard = () => {
   const getImageThumbnail = async (imagePath: string) => {
     if (!imagePath) return null;
     try {
-      const { data, error } = await supabase.rpc('sign_image' as any, {
-        p_path: imagePath,
-        expires: 300
-      });
+      // For demo images, use public URL since the bucket is public
+      if (imagePath.startsWith('demo-images/')) {
+        const fileName = imagePath.replace('demo-images/', '');
+        const { data } = supabase.storage.from('demo-images').getPublicUrl(fileName);
+        return data.publicUrl;
+      }
       
-      if (error) throw error;
-      return data || null;
+      // For medical images (private bucket), we would need signed URLs
+      // But for now, return null as we don't have access to private images in dashboard
+      return null;
     } catch {
       return null;
     }

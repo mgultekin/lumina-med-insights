@@ -133,10 +133,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      sign_image: {
-        Args: { p_path: string; expires?: number }
-        Returns: string
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
