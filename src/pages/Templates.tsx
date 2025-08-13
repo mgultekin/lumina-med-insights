@@ -164,26 +164,20 @@ export const Templates = () => {
         body: {
           analysis_id: analysis.id,
           template_key: selectedTemplate,
-          title: articleTitle || undefined,
-          tone,
+          title: articleTitle || '',
+          tone: tone || 'Academic',
           keywords,
           citations,
-          use_report: !!analysis.report_text,
-          use_analysis: !!analysis.analysis_result
+          use_report: true,
+          use_analysis: true
         }
       });
 
       if (error) throw error;
 
-      // Update status
-      await supabase
-        .from('analyses')
-        .update({ status: 'article_draft' })
-        .eq('id', analysis.id);
-
       toast({
-        title: "Article Generation Started",
-        description: "Your academic article is being generated",
+        title: "Article Generated",
+        description: "Your academic article has been generated successfully",
       });
       
       navigate(`/article/${analysis.id}`);

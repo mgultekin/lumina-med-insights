@@ -21,10 +21,8 @@ serve(async (req) => {
 
     const { 
       analysis_id, 
-      analysis_result, 
-      report_text, 
-      title, 
       template_key, 
+      title, 
       tone, 
       keywords, 
       citations, 
@@ -57,11 +55,9 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         analysis_id,
-        analysis_result,
-        report_text,
-        title,
         template_key,
-        tone,
+        title: title || '',
+        tone: tone || 'Academic',
         keywords,
         citations,
         use_report,
@@ -80,32 +76,14 @@ serve(async (req) => {
       .from('analyses')
       .update({ 
         status: 'article_draft',
-        article_text: result.article_text || `# Medical Analysis Article
-
-## Abstract
-This article presents findings from AI-powered medical image analysis.
-
-## Introduction
-Comprehensive analysis of medical imaging data using advanced AI algorithms.
-
-## Methods
-AI-powered analysis was performed on the submitted medical image.
-
-## Results
-${analysis_result}
-
-## Discussion
-The findings suggest further clinical correlation may be warranted.
-
-## Conclusion
-AI analysis completed successfully with actionable insights.`
+        article_text: result.articleText || 'Article generated successfully'
       })
       .eq('id', analysis_id)
 
     console.log('Article generation completed successfully')
 
     return new Response(
-      JSON.stringify({ success: true, article_text: result.article_text }),
+      JSON.stringify({ success: true, articleText: result.articleText }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
