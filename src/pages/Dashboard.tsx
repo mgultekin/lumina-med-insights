@@ -22,6 +22,7 @@ interface Analysis {
   article_text: string;
   published_url: string;
   model: string;
+  task: string;
 }
 
 export const Dashboard = () => {
@@ -62,6 +63,7 @@ export const Dashboard = () => {
         body_region: item.body_region || '',
         notes: item.notes || '',
         model: item.model || 'gpt-4o-mini-vision',
+        task: item.task || 'analysis',
         image_path: item.image_path || ''
       }));
       
@@ -300,13 +302,18 @@ export const Dashboard = () => {
               <Card key={analysis.id} className="clinical-shadow hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex gap-2">
-                      <Badge variant={getStatusColor(analysis.status)}>
+                    <div className="flex flex-wrap gap-1">
+                      <Badge variant={getStatusColor(analysis.status)} className="text-xs">
                         {getStatusLabel(analysis.status)}
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         {analysis.model}
                       </Badge>
+                      {analysis.task && (
+                        <Badge variant="secondary" className="text-xs">
+                          {analysis.task}
+                        </Badge>
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {new Date(analysis.created_at).toLocaleDateString()}
