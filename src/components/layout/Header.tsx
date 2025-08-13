@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Plus, BarChart3, FileText, Clock } from "lucide-react";
+import { LogOut, User, Plus, BarChart3, FileText, Clock, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import luminaLogo from "@/assets/lumina-logo.png";
 
@@ -23,33 +23,42 @@ export const Header = ({ isAuthenticated = false, onSignOut }: HeaderProps) => {
               </div>
             </Link>
             
-            {/* Navigation - Only show when authenticated */}
-            {isAuthenticated && (
-              <nav className="hidden md:flex items-center space-x-1">
-                <Link to="/dashboard">
-                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                    <BarChart3 className="h-4 w-4" />
-                    <span>Analysis</span>
-                  </Button>
-                </Link>
-                <Link to="/new-analysis">
-                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                    <Plus className="h-4 w-4" />
-                    <span>New Analysis</span>
-                  </Button>
-                </Link>
-                <Link to="/templates">
-                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4" />
-                    <span>Compose Article</span>
-                  </Button>
-                </Link>
+            {/* Navigation - Show demo cases for all users, other nav only when authenticated */}
+            <nav className="hidden md:flex items-center space-x-1">
+              <Link to="/demo-cases">
                 <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4" />
-                  <span>History</span>
+                  <BookOpen className="h-4 w-4" />
+                  <span>Demo Cases</span>
                 </Button>
-              </nav>
-            )}
+              </Link>
+              
+              {isAuthenticated && (
+                <>
+                  <Link to="/dashboard">
+                    <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                      <BarChart3 className="h-4 w-4" />
+                      <span>Analysis</span>
+                    </Button>
+                  </Link>
+                  <Link to="/new-analysis">
+                    <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                      <Plus className="h-4 w-4" />
+                      <span>New Analysis</span>
+                    </Button>
+                  </Link>
+                  <Link to="/templates">
+                    <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                      <FileText className="h-4 w-4" />
+                      <span>Compose Article</span>
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4" />
+                    <span>History</span>
+                  </Button>
+                </>
+              )}
+            </nav>
           </div>
 
           {/* Account Actions */}

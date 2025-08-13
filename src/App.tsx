@@ -12,6 +12,7 @@ import { Analysis } from "./pages/Analysis";
 import { Templates } from "./pages/Templates";
 import { AcademicTemplates } from "./pages/AcademicTemplates";
 import { Article } from "./pages/Article";
+import { DemoCases } from "./pages/DemoCases";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -45,6 +46,7 @@ const App = () => (
                 <Analysis />
               </ProtectedRoute>
             } />
+            <Route path="/demo-cases" element={<DemoCases />} />
             <Route path="/templates" element={<AcademicTemplates />} />
             <Route path="/templates/:id" element={
               <ProtectedRoute>
