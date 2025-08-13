@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Layout } from "@/components/layout/Layout";
 import { RichTextEditor } from "@/components/RichTextEditor";
-import { ArrowLeft, Save, RefreshCw, FileDown, Globe, Loader2, X } from "lucide-react";
+import { ArrowLeft, Save, RefreshCw, FileDown, Globe, Loader2, X, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -38,9 +38,10 @@ export const Article = () => {
   
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAutoSaved, setIsAutoSaved] = useState(false);
   
   // Editor and metadata state
   const [articleContent, setArticleContent] = useState("");
@@ -102,6 +103,44 @@ export const Article = () => {
       setLoading(false);
     }
   };
+
+  const autoSave = useCallback(async () => {
+    if (!analysis || isSaving) return;
+
+    try {
+      setIsSaving(true);
+      const { error } = await supabase
+        .from('analyses')
+        .update({ 
+          article_text: articleContent,
+          article_title: articleTitle,
+          tone,
+          keywords,
+          citations
+        })
+        .eq('id', analysis.id);
+
+      if (error) throw error;
+
+      setIsAutoSaved(true);
+      setTimeout(() => setIsAutoSaved(false), 2000);
+    } catch (error: any) {
+      console.error('Auto-save error:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [analysis, articleContent, articleTitle, tone, keywords, citations, isSaving]);
+
+  // Auto-save effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (analysis && (articleContent || articleTitle)) {
+        autoSave();
+      }
+    }, 1000); // Auto-save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [articleContent, articleTitle, tone, keywords, citations, autoSave]);
 
   const handleSaveDraft = async () => {
     if (!analysis) return;
@@ -318,20 +357,36 @@ export const Article = () => {
                 Edit and publish your academic article
               </p>
             </div>
-            {analysis.status === 'published' && analysis.published_url && (
-              <div className="text-center">
-                <Badge variant="default" className="mb-2">Published</Badge>
-                <br />
-                <a 
-                  href={analysis.published_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-medical-primary hover:underline text-sm"
-                >
-                  View Published Article
-                </a>
-              </div>
-            )}
+            
+            {/* Auto-Saved Indicator */}
+            <div className="flex items-center space-x-4">
+              {isAutoSaved && (
+                <div className="flex items-center space-x-2 text-green-600">
+                  <Check className="h-4 w-4" />
+                  <span className="text-sm">Auto-Saved</span>
+                </div>
+              )}
+              {isSaving && !isAutoSaved && (
+                <div className="flex items-center space-x-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Saving...</span>
+                </div>
+              )}
+              {analysis.status === 'published' && analysis.published_url && (
+                <div className="text-center">
+                  <Badge variant="default" className="mb-2">Published</Badge>
+                  <br />
+                  <a 
+                    href={analysis.published_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-medical-primary hover:underline text-sm"
+                  >
+                    View Published Article
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
