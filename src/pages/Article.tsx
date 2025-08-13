@@ -196,10 +196,9 @@ export const Article = () => {
         body: {
           analysis_id: analysis.id,
           article_text: articleContent,
-          article_title: articleTitle,
-          tone,
-          keywords,
-          citations
+          title: articleTitle || 'Lumina Case Report',
+          template_key: analysis.template_key,
+          keywords
         }
       });
 
@@ -519,6 +518,26 @@ export const Article = () => {
                       </>
                     )}
                   </Button>
+
+                  {/* Published Article Link */}
+                  {analysis.status === 'published' && analysis.published_url && (
+                    <Card className="w-full mt-4">
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <Globe className="h-6 w-6 text-medical-primary mx-auto mb-2" />
+                          <p className="text-sm font-medium mb-2">Article Published!</p>
+                          <a 
+                            href={analysis.published_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-4 py-2 bg-medical-primary text-white rounded-md hover:bg-medical-primary/90 transition-colors text-sm"
+                          >
+                            Open Published Article
+                          </a>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -22,13 +22,12 @@ serve(async (req) => {
     const { 
       analysis_id, 
       article_text, 
-      article_title, 
-      tone, 
-      keywords, 
-      citations 
+      title, 
+      template_key,
+      keywords
     } = await req.json()
 
-    console.log('Received article publish request:', { analysis_id, article_title })
+    console.log('Received article publish request:', { analysis_id, title, template_key })
 
     // Call external webhook
     const webhookUrl = Deno.env.get('PUBLISH_ARTICLE_WEBHOOK_URL')
@@ -47,10 +46,9 @@ serve(async (req) => {
       body: JSON.stringify({
         analysis_id,
         article_text,
-        article_title,
-        tone,
-        keywords,
-        citations
+        title,
+        template_key,
+        keywords
       })
     })
 
@@ -65,7 +63,7 @@ serve(async (req) => {
       .from('analyses')
       .update({ 
         status: 'published',
-        published_url: result.published_url || `https://example.com/articles/${analysis_id}`
+        published_url: result.publishedUrl || `https://example.com/articles/${analysis_id}`
       })
       .eq('id', analysis_id)
 
@@ -74,7 +72,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        published_url: result.published_url || `https://example.com/articles/${analysis_id}` 
+        publishedUrl: result.publishedUrl || `https://example.com/articles/${analysis_id}` 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
