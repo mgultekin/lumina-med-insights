@@ -54,14 +54,14 @@ serve(async (req) => {
       .from('analyses')
       .update({ 
         status: 'report_draft',
-        report_text: result.report_text || 'Clinical report generated successfully'
+        report_text: result.reportText || 'Clinical report generated successfully'
       })
       .eq('id', analysis_id)
 
     console.log('Report generation completed successfully')
 
     return new Response(
-      JSON.stringify({ success: true, report_text: result.report_text }),
+      JSON.stringify({ success: true, reportText: result.reportText }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 

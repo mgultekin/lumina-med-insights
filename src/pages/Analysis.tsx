@@ -111,8 +111,8 @@ export const Analysis = () => {
       if (error) throw error;
 
       toast({
-        title: "Report Generation Started",
-        description: "Your clinical report is being generated",
+        title: "Report Generated",
+        description: "Your clinical report has been generated successfully",
       });
       
       // Refresh the analysis to get updated data
