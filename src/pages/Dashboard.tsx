@@ -71,8 +71,8 @@ export const Dashboard = () => {
       
       // Load thumbnails for images
       transformedData.forEach(async (analysis) => {
-        const primaryImagePath = analysis.image_path || 
-          (analysis.image_paths && analysis.image_paths.length > 0 ? analysis.image_paths[0] : null);
+        const primaryImagePath = analysis.image_paths && analysis.image_paths.length > 0 ? 
+          analysis.image_paths[0] : analysis.image_path;
         
         if (primaryImagePath && !primaryImagePath.toLowerCase().includes('.dcm')) {
           const thumbnailUrl = await getImageThumbnail(primaryImagePath);
@@ -139,10 +139,13 @@ export const Dashboard = () => {
   const getImageThumbnail = async (imagePath: string) => {
     if (!imagePath) return null;
     try {
-      const { data } = await supabase.storage
-        .from('medical-images')
-        .createSignedUrl(imagePath, 3600);
-      return data?.signedUrl || null;
+      const { data, error } = await supabase.rpc('sign_image', {
+        p_path: imagePath,
+        expires: 300
+      });
+      
+      if (error) throw error;
+      return data || null;
     } catch {
       return null;
     }
@@ -231,8 +234,8 @@ export const Dashboard = () => {
   };
 
   const renderImageThumbnail = (analysis: Analysis) => {
-    const primaryImagePath = analysis.image_path || 
-      (analysis.image_paths && analysis.image_paths.length > 0 ? analysis.image_paths[0] : null);
+    const primaryImagePath = analysis.image_paths && analysis.image_paths.length > 0 ? 
+      analysis.image_paths[0] : analysis.image_path;
     
     const isDicom = primaryImagePath?.toLowerCase().includes('.dcm');
     const thumbnailUrl = thumbnails[analysis.id];
