@@ -38,10 +38,12 @@ export const Header = ({ isAuthenticated = false, onSignOut }: HeaderProps) => {
                     <span>New Analysis</span>
                   </Button>
                 </Link>
-                <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                  <FileText className="h-4 w-4" />
-                  <span>Academic Writing</span>
-                </Button>
+                <Link to="/templates">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <FileText className="h-4 w-4" />
+                    <span>Academic Writing</span>
+                  </Button>
+                </Link>
                 <Button variant="ghost" size="sm" className="flex items-center space-x-2">
                   <Clock className="h-4 w-4" />
                   <span>History</span>
