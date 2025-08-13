@@ -273,24 +273,14 @@ export const Dashboard = () => {
             <h1 className="text-3xl font-bold text-medical-primary">Dashboard</h1>
             <p className="text-muted-foreground">Manage your medical image analyses</p>
           </div>
-          <div className="flex items-center space-x-4">
-            <Button 
-              onClick={() => navigate('/templates')} 
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <FileText className="h-4 w-4" />
-              <span>Preview Templates</span>
-            </Button>
-            <Button 
-              onClick={() => navigate('/new-analysis')} 
-              variant="medical"
-              className="flex items-center space-x-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span>New Analysis</span>
-            </Button>
-          </div>
+          <Button 
+            onClick={() => navigate('/new-analysis')} 
+            variant="medical"
+            className="flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Analysis</span>
+          </Button>
         </div>
 
         {loading ? (
