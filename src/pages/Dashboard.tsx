@@ -139,7 +139,7 @@ export const Dashboard = () => {
   const getImageThumbnail = async (imagePath: string) => {
     if (!imagePath) return null;
     try {
-      const { data, error } = await supabase.rpc('sign_image', {
+      const { data, error } = await supabase.rpc('sign_image' as any, {
         p_path: imagePath,
         expires: 300
       });
