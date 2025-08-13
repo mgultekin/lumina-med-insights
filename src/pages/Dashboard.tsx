@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Layout } from "@/components/layout/Layout";
-import { Plus, Eye, FileText, Trash2, Loader2 } from "lucide-react";
+import { Plus, Eye, FileText, Trash2, Loader2, Globe, RefreshCw, ImageIcon, MonitorIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -16,15 +16,18 @@ interface Analysis {
   modality: string;
   body_region: string;
   image_paths: string[];
+  image_path: string;
   analysis_result: string;
   report_text: string;
   article_text: string;
   published_url: string;
+  model: string;
 }
 
 export const Dashboard = () => {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [loading, setLoading] = useState(true);
+  const [thumbnails, setThumbnails] = useState<{[key: string]: string}>({});
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -57,10 +60,25 @@ export const Dashboard = () => {
         published_url: item.published_url || '',
         modality: item.modality || '',
         body_region: item.body_region || '',
-        notes: item.notes || ''
+        notes: item.notes || '',
+        model: item.model || 'gpt-4o-mini-vision',
+        image_path: item.image_path || ''
       }));
       
       setAnalyses(transformedData);
+      
+      // Load thumbnails for images
+      transformedData.forEach(async (analysis) => {
+        const primaryImagePath = analysis.image_path || 
+          (analysis.image_paths && analysis.image_paths.length > 0 ? analysis.image_paths[0] : null);
+        
+        if (primaryImagePath && !primaryImagePath.toLowerCase().includes('.dcm')) {
+          const thumbnailUrl = await getImageThumbnail(primaryImagePath);
+          if (thumbnailUrl) {
+            setThumbnails(prev => ({ ...prev, [analysis.id]: thumbnailUrl }));
+          }
+        }
+      });
     } catch (error: any) {
       console.error('Error:', error);
       toast({
@@ -73,12 +91,20 @@ export const Dashboard = () => {
     }
   };
 
-  const handleDelete = async (id: string, imagePaths: string[]) => {
-    if (!confirm('Are you sure you want to delete this analysis?')) return;
+  const handleDelete = async (id: string, imagePaths: string[], imagePath: string) => {
+    if (!confirm('Are you sure you want to delete this analysis? This action cannot be undone.')) return;
 
     try {
-      if (imagePaths && imagePaths.length > 0) {
-        await supabase.storage.from('medical-images').remove(imagePaths);
+      // Collect all image paths to delete
+      const allImagePaths = [];
+      if (imagePath) allImagePaths.push(imagePath);
+      if (imagePaths && imagePaths.length > 0) allImagePaths.push(...imagePaths);
+      
+      // Remove duplicates
+      const uniqueImagePaths = [...new Set(allImagePaths)];
+      
+      if (uniqueImagePaths.length > 0) {
+        await supabase.storage.from('medical-images').remove(uniqueImagePaths);
       }
 
       const { error } = await supabase
@@ -89,6 +115,11 @@ export const Dashboard = () => {
       if (error) throw error;
 
       setAnalyses(analyses.filter(a => a.id !== id));
+      setThumbnails(prev => {
+        const newThumbnails = { ...prev };
+        delete newThumbnails[id];
+        return newThumbnails;
+      });
       toast({
         title: "Deleted",
         description: "Analysis deleted successfully",
@@ -115,6 +146,64 @@ export const Dashboard = () => {
     }
   };
 
+  const handleGenerateReport = async (analysisId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('generate-report', {
+        body: { analysis_id: analysisId }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Report Generation Started",
+        description: "Your clinical report is being generated",
+      });
+      
+      // Refresh analyses to update the UI
+      setTimeout(() => fetchAnalyses(), 1000);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to generate report",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handlePublish = async (analysisId: string) => {
+    try {
+      const analysis = analyses.find(a => a.id === analysisId);
+      if (!analysis) return;
+      
+      const { error } = await supabase.functions.invoke('publish-article', {
+        body: {
+          analysis_id: analysisId,
+          article_text: analysis.article_text,
+          article_title: 'Medical Analysis Article',
+          tone: 'Academic',
+          keywords: [],
+          citations: []
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Article Published!",
+        description: "Your article has been published successfully",
+      });
+      
+      // Refresh analyses to update the UI
+      setTimeout(() => fetchAnalyses(), 1000);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to publish article",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'uploaded': return 'secondary';
@@ -137,6 +226,38 @@ export const Dashboard = () => {
       case 'published': return 'Published';
       default: return status;
     }
+  };
+
+  const renderImageThumbnail = (analysis: Analysis) => {
+    const primaryImagePath = analysis.image_path || 
+      (analysis.image_paths && analysis.image_paths.length > 0 ? analysis.image_paths[0] : null);
+    
+    const isDicom = primaryImagePath?.toLowerCase().includes('.dcm');
+    const thumbnailUrl = thumbnails[analysis.id];
+
+    if (isDicom) {
+      return (
+        <div className="w-full h-full bg-muted/20 rounded flex items-center justify-center">
+          <MonitorIcon className="h-8 w-8 text-muted-foreground" />
+        </div>
+      );
+    }
+
+    if (thumbnailUrl) {
+      return (
+        <img 
+          src={thumbnailUrl} 
+          alt="Medical image thumbnail"
+          className="w-full h-full object-cover rounded"
+        />
+      );
+    }
+
+    return (
+      <div className="w-full h-full bg-muted/20 rounded flex items-center justify-center">
+        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+      </div>
+    );
   };
 
   return (
@@ -178,10 +299,15 @@ export const Dashboard = () => {
             {analyses.map((analysis) => (
               <Card key={analysis.id} className="clinical-shadow hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant={getStatusColor(analysis.status)}>
-                      {getStatusLabel(analysis.status)}
-                    </Badge>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex gap-2">
+                      <Badge variant={getStatusColor(analysis.status)}>
+                        {getStatusLabel(analysis.status)}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {analysis.model}
+                      </Badge>
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {new Date(analysis.created_at).toLocaleDateString()}
                     </div>
@@ -189,14 +315,14 @@ export const Dashboard = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="aspect-square bg-clinical-surface rounded-lg flex items-center justify-center overflow-hidden">
-                    {analysis.image_paths && analysis.image_paths.length > 0 ? (
-                      <div className="text-center">
-                        <div className="w-full h-full bg-muted/20 rounded flex items-center justify-center">
-                          <FileText className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {analysis.image_paths.length} file{analysis.image_paths.length > 1 ? 's' : ''}
-                        </p>
+                    {analysis.image_paths && analysis.image_paths.length > 0 || analysis.image_path ? (
+                      <div className="w-full h-full relative">
+                        {renderImageThumbnail(analysis)}
+                        {(analysis.image_paths?.length > 1) && (
+                          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                            +{analysis.image_paths.length - 1}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center">
@@ -217,36 +343,68 @@ export const Dashboard = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 pt-2">
-                    <Button 
-                      onClick={() => navigate(`/analysis/${analysis.id}`)}
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1"
-                    >
-                      <Eye className="mr-2 h-3 w-3" />
-                      View
-                    </Button>
-                    
-                    {analysis.analysis_result && (
+                  {/* Quick Actions */}
+                  <div className="space-y-2 pt-2">
+                    {/* Row 1: View and Delete */}
+                    <div className="flex items-center space-x-2">
                       <Button 
                         onClick={() => navigate(`/analysis/${analysis.id}`)}
                         variant="outline" 
-                        size="sm"
-                        className="text-secondary hover:text-secondary"
+                        size="sm" 
+                        className="flex-1"
                       >
-                        <FileText className="h-3 w-3" />
+                        <Eye className="mr-2 h-3 w-3" />
+                        View
+                      </Button>
+                      
+                      <Button 
+                        onClick={() => handleDelete(analysis.id, analysis.image_paths || [], analysis.image_path || '')}
+                        variant="outline" 
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+
+                    {/* Row 2: Generate Report and Generate Article */}
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        onClick={() => handleGenerateReport(analysis.id)}
+                        variant="outline" 
+                        size="sm"
+                        className="flex-1"
+                        disabled={!!analysis.report_text}
+                      >
+                        <FileText className="mr-2 h-3 w-3" />
+                        Report
+                      </Button>
+                      
+                      <Button 
+                        onClick={() => navigate(`/templates/${analysis.id}`)}
+                        variant="outline" 
+                        size="sm"
+                        className="flex-1"
+                        disabled={!analysis.analysis_result}
+                      >
+                        <RefreshCw className="mr-2 h-3 w-3" />
+                        Article
+                      </Button>
+                    </div>
+
+                    {/* Row 3: Publish (if article exists) */}
+                    {analysis.article_text && (
+                      <Button 
+                        onClick={() => handlePublish(analysis.id)}
+                        variant="outline" 
+                        size="sm"
+                        className="w-full"
+                        disabled={analysis.status === 'published'}
+                      >
+                        <Globe className="mr-2 h-3 w-3" />
+                        {analysis.status === 'published' ? 'Published' : 'Publish'}
                       </Button>
                     )}
-                    
-                    <Button 
-                      onClick={() => handleDelete(analysis.id, analysis.image_paths || [])}
-                      variant="outline" 
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
