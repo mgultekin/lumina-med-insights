@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const TEMPLATES = [
   {
@@ -51,6 +52,13 @@ interface ArticleSections {
   discussion: string;
   conclusion: string;
   references: string[];
+}
+
+interface AIAssistanceToggles {
+  introduction: boolean;
+  discussion: boolean;
+  abstract: boolean;
+  conclusion: boolean;
 }
 
 const TONES = ["Academic", "Neutral", "Clinical", "Educational"];
@@ -93,9 +101,16 @@ export const Templates = () => {
     conclusion: "",
     references: []
   });
-  const [tone, setTone] = useState<string>("Academic");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [citations, setCitations] = useState<string[]>([]);
+  
+  // AI Assistance toggles
+  const [aiToggles, setAiToggles] = useState<AIAssistanceToggles>({
+    introduction: false,
+    discussion: false,
+    abstract: false,
+    conclusion: false
+  });
 
   useEffect(() => {
     if (id && user) {
@@ -135,9 +150,6 @@ export const Templates = () => {
       if (data.template_key) {
         setSelectedTemplate(data.template_key);
       }
-      if (data.tone) {
-        setTone(data.tone);
-      }
       if (data.keywords && Array.isArray(data.keywords)) {
         setKeywords(data.keywords.filter((k: any) => typeof k === 'string'));
       }
@@ -175,7 +187,6 @@ export const Templates = () => {
         .update({
           template_key: selectedTemplate,
           article_title: articleSections.title,
-          tone,
           keywords,
           citations
         })
@@ -214,7 +225,6 @@ export const Templates = () => {
           article_title: articleSections.title,
           article_text: htmlContent,
           status: 'article_draft',
-          tone,
           keywords,
           citations
         })
@@ -243,6 +253,20 @@ export const Templates = () => {
   const handleGenerateAllSections = async () => {
     if (!analysis || !selectedTemplate) return;
 
+    // Check which sections are enabled for AI
+    const enabledSections = Object.entries(aiToggles)
+      .filter(([_, enabled]) => enabled)
+      .map(([section, _]) => section);
+
+    if (enabledSections.length === 0) {
+      toast({
+        title: "No Sections Selected",
+        description: "Please enable AI assistance for at least one section",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const { error } = await supabase.functions.invoke('generate-article', {
@@ -250,20 +274,21 @@ export const Templates = () => {
           analysis_id: analysis.id,
           template_key: selectedTemplate,
           title: articleSections.title,
-          tone,
+          tone: "Academic",
           keywords,
           citations,
           use_report: true,
           use_analysis: true,
-          sections: articleSections
+          sections: articleSections,
+          enabled_sections: enabledSections
         }
       });
 
       if (error) throw error;
 
       toast({
-        title: "All Sections Generated",
-        description: "All optional sections have been generated with AI",
+        title: "Selected Sections Generated",
+        description: `Generated AI content for ${enabledSections.length} section(s)`,
       });
       
       // Refresh to see generated content
@@ -291,7 +316,7 @@ export const Templates = () => {
           analysis_id: analysis.id,
           template_key: selectedTemplate,
           title: articleSections.title,
-          tone,
+          tone: "Academic",
           keywords,
           citations,
           expand_section: sectionKey,
@@ -384,24 +409,19 @@ export const Templates = () => {
     }
   };
 
+  const updateAiToggle = (section: keyof AIAssistanceToggles, enabled: boolean) => {
+    setAiToggles(prev => ({
+      ...prev,
+      [section]: enabled
+    }));
+  };
+
   const removeReference = (index: number) => {
     setArticleSections(prev => ({
       ...prev,
       references: prev.references.filter((_, i) => i !== index)
     }));
   };
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex items-center justify-center min-h-96">
-            <Loader2 className="h-8 w-8 animate-spin text-medical-primary" />
-          </div>
-        </div>
-      </Layout>
-    );
-  }
 
   if (!analysis) {
     return (
@@ -491,6 +511,45 @@ export const Templates = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {/* AI Assistance Toggle Row */}
+                <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+                  <h4 className="text-sm font-medium text-medical-primary mb-3">AI Assistance (optional)</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ai-introduction"
+                        checked={aiToggles.introduction}
+                        onCheckedChange={(checked) => updateAiToggle('introduction', !!checked)}
+                      />
+                      <Label htmlFor="ai-introduction" className="text-sm">Enable AI for Introduction</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ai-discussion"
+                        checked={aiToggles.discussion}
+                        onCheckedChange={(checked) => updateAiToggle('discussion', !!checked)}
+                      />
+                      <Label htmlFor="ai-discussion" className="text-sm">Enable AI for Discussion</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ai-abstract"
+                        checked={aiToggles.abstract}
+                        onCheckedChange={(checked) => updateAiToggle('abstract', !!checked)}
+                      />
+                      <Label htmlFor="ai-abstract" className="text-sm">Enable AI for Abstract</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ai-conclusion"
+                        checked={aiToggles.conclusion}
+                        onCheckedChange={(checked) => updateAiToggle('conclusion', !!checked)}
+                      />
+                      <Label htmlFor="ai-conclusion" className="text-sm">Enable AI for Conclusion</Label>
+                    </div>
+                  </div>
+                </div>
+
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="title">
                     <AccordionTrigger className="text-left">
@@ -527,7 +586,7 @@ export const Templates = () => {
                         />
                         <Button
                           onClick={() => handleExpandSection('abstract')}
-                          disabled={expandingSection === 'abstract'}
+                          disabled={expandingSection === 'abstract' || !aiToggles.abstract}
                           size="sm"
                           variant="outline"
                           className="w-full"
@@ -537,7 +596,7 @@ export const Templates = () => {
                           ) : (
                             <Wand2 className="mr-2 h-3 w-3" />
                           )}
-                          AI: Expand
+                          AI: Expand {!aiToggles.abstract && "(Enable AI first)"}
                         </Button>
                       </div>
                     </AccordionContent>
@@ -560,7 +619,7 @@ export const Templates = () => {
                         />
                         <Button
                           onClick={() => handleExpandSection('introduction')}
-                          disabled={expandingSection === 'introduction'}
+                          disabled={expandingSection === 'introduction' || !aiToggles.introduction}
                           size="sm"
                           variant="outline"
                           className="w-full"
@@ -570,7 +629,7 @@ export const Templates = () => {
                           ) : (
                             <Wand2 className="mr-2 h-3 w-3" />
                           )}
-                          AI: Expand
+                          AI: Expand {!aiToggles.introduction && "(Enable AI first)"}
                         </Button>
                       </div>
                     </AccordionContent>
@@ -659,7 +718,7 @@ export const Templates = () => {
                         />
                         <Button
                           onClick={() => handleExpandSection('discussion')}
-                          disabled={expandingSection === 'discussion'}
+                          disabled={expandingSection === 'discussion' || !aiToggles.discussion}
                           size="sm"
                           variant="outline"
                           className="w-full"
@@ -669,7 +728,7 @@ export const Templates = () => {
                           ) : (
                             <Wand2 className="mr-2 h-3 w-3" />
                           )}
-                          AI: Expand
+                          AI: Expand {!aiToggles.discussion && "(Enable AI first)"}
                         </Button>
                       </div>
                     </AccordionContent>
@@ -692,7 +751,7 @@ export const Templates = () => {
                         />
                         <Button
                           onClick={() => handleExpandSection('conclusion')}
-                          disabled={expandingSection === 'conclusion'}
+                          disabled={expandingSection === 'conclusion' || !aiToggles.conclusion}
                           size="sm"
                           variant="outline"
                           className="w-full"
@@ -702,7 +761,7 @@ export const Templates = () => {
                           ) : (
                             <Wand2 className="mr-2 h-3 w-3" />
                           )}
-                          AI: Expand
+                          AI: Expand {!aiToggles.conclusion && "(Enable AI first)"}
                         </Button>
                       </div>
                     </AccordionContent>
@@ -761,7 +820,7 @@ export const Templates = () => {
                   
                   <Button
                     onClick={handleGenerateAllSections}
-                    disabled={isGenerating}
+                    disabled={isGenerating || Object.values(aiToggles).every(v => !v)}
                     variant="outline"
                     className="w-full"
                   >
@@ -770,7 +829,7 @@ export const Templates = () => {
                     ) : (
                       <Wand2 className="mr-2 h-4 w-4" />
                     )}
-                    Generate All Optional Sections with AI
+                    Generate Selected Sections with AI
                   </Button>
                   
                   <Button
