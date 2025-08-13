@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Layout } from "@/components/layout/Layout";
-import { ArrowLeft, FileText, Loader2, X } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, X, Wand2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const TEMPLATES = [
   {
@@ -31,7 +32,7 @@ const TEMPLATES = [
   },
   {
     key: "systematic-review",
-    title: "Systematic Review Skeleton",
+    title: "Systematic Review",
     description: "Comprehensive review of existing literature on a topic"
   },
   {
@@ -40,6 +41,17 @@ const TEMPLATES = [
     description: "Brief report on technical methods or innovations"
   }
 ];
+
+interface ArticleSections {
+  title: string;
+  abstract: string;
+  introduction: string;
+  methods: string;
+  results: string;
+  discussion: string;
+  conclusion: string;
+  references: string[];
+}
 
 const TONES = ["Academic", "Neutral", "Clinical", "Educational"];
 
@@ -53,6 +65,8 @@ interface Analysis {
   tone: string;
   keywords: any;
   citations: any;
+  modality: string;
+  body_region: string;
 }
 
 export const Templates = () => {
@@ -64,15 +78,24 @@ export const Templates = () => {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [expandingSection, setExpandingSection] = useState<string | null>(null);
   
   // Form state
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  const [articleTitle, setArticleTitle] = useState<string>("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("case-report");
+  const [articleSections, setArticleSections] = useState<ArticleSections>({
+    title: "",
+    abstract: "",
+    introduction: "",
+    methods: "",
+    results: "",
+    discussion: "",
+    conclusion: "",
+    references: []
+  });
   const [tone, setTone] = useState<string>("Academic");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [citations, setCitations] = useState<string[]>([]);
-  const [keywordInput, setKeywordInput] = useState<string>("");
-  const [citationInput, setCitationInput] = useState<string>("");
 
   useEffect(() => {
     if (id && user) {
@@ -92,11 +115,25 @@ export const Templates = () => {
       if (error) throw error;
       
       setAnalysis(data);
+      
+      // Initialize article sections with existing data or autofilled content
+      const generatedTitle = data.article_title || generateTitle(data);
+      const methodsContent = data.report_text || data.analysis_result || "";
+      const resultsContent = data.report_text || data.analysis_result || "";
+      
+      setArticleSections({
+        title: generatedTitle,
+        abstract: "",
+        introduction: "",
+        methods: methodsContent,
+        results: resultsContent,
+        discussion: "",
+        conclusion: "",
+        references: (Array.isArray(data.citations) ? data.citations.filter((c: any) => typeof c === 'string') : [])
+      });
+      
       if (data.template_key) {
         setSelectedTemplate(data.template_key);
-      }
-      if (data.article_title) {
-        setArticleTitle(data.article_title);
       }
       if (data.tone) {
         setTone(data.tone);
@@ -120,15 +157,24 @@ export const Templates = () => {
     }
   };
 
-  const handleSaveMetadata = async () => {
+  const generateTitle = (data: Analysis) => {
+    if (data.article_title) return data.article_title;
+    
+    const modality = data.modality || "Medical";
+    const bodyRegion = data.body_region || "Imaging";
+    return `${modality} ${bodyRegion} Analysis: Clinical Findings and Assessment`;
+  };
+
+  const handleSaveDraft = async () => {
     if (!analysis) return;
 
+    setIsSaving(true);
     try {
       const { error } = await supabase
         .from('analyses')
         .update({
           template_key: selectedTemplate,
-          article_title: articleTitle,
+          article_title: articleSections.title,
           tone,
           keywords,
           citations
@@ -138,46 +184,47 @@ export const Templates = () => {
       if (error) throw error;
 
       toast({
-        title: "Metadata Saved",
-        description: "Your article metadata has been saved",
+        title: "Draft Saved",
+        description: "Your article draft has been saved",
       });
     } catch (error: any) {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Failed to save metadata",
+        description: "Failed to save draft",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleGenerateArticle = async () => {
+  const handleInsertAnalysis = async () => {
     if (!analysis || !selectedTemplate) return;
 
     setIsGenerating(true);
     try {
-      // Save metadata first
-      await handleSaveMetadata();
-
-      // Call the webhook via edge function
-      const { error } = await supabase.functions.invoke('generate-article', {
-        body: {
-          analysis_id: analysis.id,
+      // Compose HTML from template and current sections
+      const htmlContent = composeHtmlFromSections();
+      
+      const { error } = await supabase
+        .from('analyses')
+        .update({
           template_key: selectedTemplate,
-          title: articleTitle || '',
-          tone: tone || 'Academic',
+          article_title: articleSections.title,
+          article_text: htmlContent,
+          status: 'article_draft',
+          tone,
           keywords,
-          citations,
-          use_report: true,
-          use_analysis: true
-        }
-      });
+          citations
+        })
+        .eq('id', analysis.id);
 
       if (error) throw error;
 
       toast({
-        title: "Article Generated",
-        description: "Your academic article has been generated successfully",
+        title: "Analysis Inserted",
+        description: "Analysis data has been inserted into the template",
       });
       
       navigate(`/article/${analysis.id}`);
@@ -185,7 +232,7 @@ export const Templates = () => {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Failed to generate article",
+        description: "Failed to insert analysis into template",
         variant: "destructive"
       });
     } finally {
@@ -193,26 +240,155 @@ export const Templates = () => {
     }
   };
 
-  const addKeyword = () => {
-    if (keywordInput.trim() && !keywords.includes(keywordInput.trim())) {
-      setKeywords([...keywords, keywordInput.trim()]);
-      setKeywordInput("");
+  const handleGenerateAllSections = async () => {
+    if (!analysis || !selectedTemplate) return;
+
+    setIsGenerating(true);
+    try {
+      const { error } = await supabase.functions.invoke('generate-article', {
+        body: {
+          analysis_id: analysis.id,
+          template_key: selectedTemplate,
+          title: articleSections.title,
+          tone,
+          keywords,
+          citations,
+          use_report: true,
+          use_analysis: true,
+          sections: articleSections
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "All Sections Generated",
+        description: "All optional sections have been generated with AI",
+      });
+      
+      // Refresh to see generated content
+      await fetchAnalysis();
+    } catch (error: any) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate sections",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const removeKeyword = (index: number) => {
-    setKeywords(keywords.filter((_, i) => i !== index));
-  };
+  const handleExpandSection = async (sectionKey: string) => {
+    if (!analysis) return;
 
-  const addCitation = () => {
-    if (citationInput.trim() && !citations.includes(citationInput.trim())) {
-      setCitations([...citations, citationInput.trim()]);
-      setCitationInput("");
+    setExpandingSection(sectionKey);
+    try {
+      // Call AI to expand just this section
+      const { data, error } = await supabase.functions.invoke('generate-article', {
+        body: {
+          analysis_id: analysis.id,
+          template_key: selectedTemplate,
+          title: articleSections.title,
+          tone,
+          keywords,
+          citations,
+          expand_section: sectionKey,
+          current_sections: articleSections
+        }
+      });
+
+      if (error) throw error;
+
+      // Update the specific section with generated content
+      if (data?.expanded_content) {
+        setArticleSections(prev => ({
+          ...prev,
+          [sectionKey]: data.expanded_content
+        }));
+        
+        toast({
+          title: "Section Expanded",
+          description: `${sectionKey} section has been generated`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: `Failed to expand ${sectionKey} section`,
+        variant: "destructive"
+      });
+    } finally {
+      setExpandingSection(null);
     }
   };
 
-  const removeCitation = (index: number) => {
-    setCitations(citations.filter((_, i) => i !== index));
+  const composeHtmlFromSections = () => {
+    let html = `<article class="academic-article">`;
+    
+    if (articleSections.title) {
+      html += `<h1>${articleSections.title}</h1>`;
+    }
+    
+    if (articleSections.abstract) {
+      html += `<section class="abstract"><h2>Abstract</h2><p>${articleSections.abstract}</p></section>`;
+    }
+    
+    if (articleSections.introduction) {
+      html += `<section class="introduction"><h2>Introduction</h2><p>${articleSections.introduction}</p></section>`;
+    }
+    
+    if (articleSections.methods) {
+      html += `<section class="methods"><h2>Methods/Case Description</h2><p>${articleSections.methods}</p></section>`;
+    }
+    
+    if (articleSections.results) {
+      html += `<section class="results"><h2>Results/Findings</h2><p>${articleSections.results}</p></section>`;
+    }
+    
+    if (articleSections.discussion) {
+      html += `<section class="discussion"><h2>Discussion</h2><p>${articleSections.discussion}</p></section>`;
+    }
+    
+    if (articleSections.conclusion) {
+      html += `<section class="conclusion"><h2>Conclusion</h2><p>${articleSections.conclusion}</p></section>`;
+    }
+    
+    if (articleSections.references.length > 0) {
+      html += `<section class="references"><h2>References</h2><ol>`;
+      articleSections.references.forEach(ref => {
+        html += `<li>${ref}</li>`;
+      });
+      html += `</ol></section>`;
+    }
+    
+    html += `</article>`;
+    return html;
+  };
+
+  const updateSection = (sectionKey: keyof ArticleSections, value: string | string[]) => {
+    setArticleSections(prev => ({
+      ...prev,
+      [sectionKey]: value
+    }));
+  };
+
+  const addReference = (ref: string) => {
+    if (ref.trim() && !articleSections.references.includes(ref.trim())) {
+      setArticleSections(prev => ({
+        ...prev,
+        references: [...prev.references, ref.trim()]
+      }));
+    }
+  };
+
+  const removeReference = (index: number) => {
+    setArticleSections(prev => ({
+      ...prev,
+      references: prev.references.filter((_, i) => i !== index)
+    }));
   };
 
   if (loading) {
@@ -256,38 +432,45 @@ export const Templates = () => {
           </Button>
           
           <div>
-            <h1 className="text-3xl font-bold text-medical-primary">Choose Article Template</h1>
+            <h1 className="text-3xl font-bold text-medical-primary">Compose Article</h1>
             <p className="text-muted-foreground">
-              Select a template and configure your academic article
+              Template-first approach: select a layout and customize each section
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Template Selection */}
-          <div className="lg:col-span-2">
+          <div>
             <Card className="clinical-shadow">
               <CardHeader>
-                <CardTitle>Academic Templates</CardTitle>
+                <CardTitle>Choose Template Layout</CardTitle>
                 <CardDescription>
-                  Choose the most appropriate template for your research article
+                  Select the academic template structure for your article
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   {TEMPLATES.map((template) => (
                     <div
                       key={template.key}
                       onClick={() => setSelectedTemplate(template.key)}
                       className={`p-4 border rounded-lg cursor-pointer transition-all ${
                         selectedTemplate === template.key
-                          ? 'border-medical-primary bg-medical-primary/5'
+                          ? 'border-medical-primary bg-medical-primary/5 shadow-md'
                           : 'border-border hover:border-medical-primary/50'
                       }`}
                     >
-                      <h3 className="font-semibold text-medical-primary mb-2">
-                        {template.title}
-                      </h3>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-medical-primary">
+                          {template.title}
+                        </h3>
+                        {selectedTemplate === template.key && (
+                          <Badge variant="default" className="bg-medical-primary">
+                            Selected
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {template.description}
                       </p>
@@ -298,121 +481,308 @@ export const Templates = () => {
             </Card>
           </div>
 
-          {/* Configuration Panel */}
+          {/* Sections Panel */}
           <div>
             <Card className="clinical-shadow">
               <CardHeader>
-                <CardTitle>Article Configuration</CardTitle>
+                <CardTitle>Article Sections</CardTitle>
                 <CardDescription>
-                  Customize your article settings
+                  Configure each section of your article
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Article Title (Optional)</Label>
-                  <Input
-                    id="title"
-                    value={articleTitle}
-                    onChange={(e) => setArticleTitle(e.target.value)}
-                    placeholder="Auto-generate if empty"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="tone">Tone</Label>
-                  <Select value={tone} onValueChange={setTone}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TONES.map((toneOption) => (
-                        <SelectItem key={toneOption} value={toneOption}>
-                          {toneOption}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="keywords">Keywords</Label>
-                  <div className="flex gap-2 mb-2">
-                    <Input
-                      id="keywords"
-                      value={keywordInput}
-                      onChange={(e) => setKeywordInput(e.target.value)}
-                      placeholder="Enter keyword and press Enter"
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addKeyword())}
-                    />
-                    <Button onClick={addKeyword} size="sm" variant="outline">
-                      Add
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {keywords.map((keyword, index) => (
-                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                        {keyword}
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
-                          onClick={() => removeKeyword(index)}
-                        />
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="citations">Citations (Optional)</Label>
-                  <div className="flex gap-2 mb-2">
-                    <Input
-                      id="citations"
-                      value={citationInput}
-                      onChange={(e) => setCitationInput(e.target.value)}
-                      placeholder="Enter URL and press Enter"
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCitation())}
-                    />
-                    <Button onClick={addCitation} size="sm" variant="outline">
-                      Add
-                    </Button>
-                  </div>
-                  <div className="space-y-1">
-                    {citations.map((citation, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
-                        <span className="text-sm truncate flex-1">{citation}</span>
-                        <X 
-                          className="h-4 w-4 cursor-pointer" 
-                          onClick={() => removeCitation(index)}
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="title">
+                    <AccordionTrigger className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span>1. Title</span>
+                        <Badge variant="outline" className="text-xs">Required</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        <Input
+                          value={articleSections.title}
+                          onChange={(e) => updateSection('title', e.target.value)}
+                          placeholder="Article title"
                         />
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </AccordionContent>
+                  </AccordionItem>
 
-                <div className="flex gap-2">
+                  <AccordionItem value="abstract">
+                    <AccordionTrigger className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span>2. Abstract</span>
+                        <Badge variant="secondary" className="text-xs">Optional</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        <Textarea
+                          value={articleSections.abstract}
+                          onChange={(e) => updateSection('abstract', e.target.value)}
+                          placeholder="Abstract content"
+                          rows={3}
+                        />
+                        <Button
+                          onClick={() => handleExpandSection('abstract')}
+                          disabled={expandingSection === 'abstract'}
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                        >
+                          {expandingSection === 'abstract' ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Wand2 className="mr-2 h-3 w-3" />
+                          )}
+                          AI: Expand
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem value="introduction">
+                    <AccordionTrigger className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span>3. Introduction</span>
+                        <Badge variant="secondary" className="text-xs">Optional</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        <Textarea
+                          value={articleSections.introduction}
+                          onChange={(e) => updateSection('introduction', e.target.value)}
+                          placeholder="Introduction content"
+                          rows={4}
+                        />
+                        <Button
+                          onClick={() => handleExpandSection('introduction')}
+                          disabled={expandingSection === 'introduction'}
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                        >
+                          {expandingSection === 'introduction' ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Wand2 className="mr-2 h-3 w-3" />
+                          )}
+                          AI: Expand
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem value="methods">
+                    <AccordionTrigger className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span>4. Methods/Case Description</span>
+                        <Badge variant="default" className="text-xs bg-green-600">Source-filled</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        <Textarea
+                          value={articleSections.methods}
+                          onChange={(e) => updateSection('methods', e.target.value)}
+                          placeholder="Methods or case description"
+                          rows={4}
+                        />
+                        <Button
+                          onClick={() => handleExpandSection('methods')}
+                          disabled={expandingSection === 'methods'}
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                        >
+                          {expandingSection === 'methods' ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="mr-2 h-3 w-3" />
+                          )}
+                          AI: Rewrite
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem value="results">
+                    <AccordionTrigger className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span>5. Results/Findings</span>
+                        <Badge variant="default" className="text-xs bg-green-600">Source-filled</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        <Textarea
+                          value={articleSections.results}
+                          onChange={(e) => updateSection('results', e.target.value)}
+                          placeholder="Results or findings"
+                          rows={4}
+                        />
+                        <Button
+                          onClick={() => handleExpandSection('results')}
+                          disabled={expandingSection === 'results'}
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                        >
+                          {expandingSection === 'results' ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="mr-2 h-3 w-3" />
+                          )}
+                          AI: Rewrite
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem value="discussion">
+                    <AccordionTrigger className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span>6. Discussion</span>
+                        <Badge variant="secondary" className="text-xs">Optional</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        <Textarea
+                          value={articleSections.discussion}
+                          onChange={(e) => updateSection('discussion', e.target.value)}
+                          placeholder="Discussion content"
+                          rows={4}
+                        />
+                        <Button
+                          onClick={() => handleExpandSection('discussion')}
+                          disabled={expandingSection === 'discussion'}
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                        >
+                          {expandingSection === 'discussion' ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Wand2 className="mr-2 h-3 w-3" />
+                          )}
+                          AI: Expand
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem value="conclusion">
+                    <AccordionTrigger className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span>7. Conclusion</span>
+                        <Badge variant="secondary" className="text-xs">Optional</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        <Textarea
+                          value={articleSections.conclusion}
+                          onChange={(e) => updateSection('conclusion', e.target.value)}
+                          placeholder="Conclusion content"
+                          rows={3}
+                        />
+                        <Button
+                          onClick={() => handleExpandSection('conclusion')}
+                          disabled={expandingSection === 'conclusion'}
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                        >
+                          {expandingSection === 'conclusion' ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Wand2 className="mr-2 h-3 w-3" />
+                          )}
+                          AI: Expand
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem value="references">
+                    <AccordionTrigger className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span>8. References</span>
+                        <Badge variant="outline" className="text-xs">From Analysis</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        {articleSections.references.map((ref, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                            <span className="text-sm flex-1">{ref}</span>
+                            <Button
+                              onClick={() => removeReference(index)}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Input
+                          placeholder="Add reference URL"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              addReference(e.currentTarget.value);
+                              e.currentTarget.value = '';
+                            }
+                          }}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                {/* Bottom Actions */}
+                <div className="pt-6 space-y-3">
                   <Button
-                    onClick={() => navigate(`/analysis/${id}`)}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Analysis
-                  </Button>
-                  <Button
-                    onClick={handleGenerateArticle}
-                    disabled={!selectedTemplate || isGenerating}
+                    onClick={handleInsertAnalysis}
+                    disabled={isGenerating}
                     variant="medical"
-                    className="flex-1"
+                    className="w-full"
                   >
                     {isGenerating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Generate Article Draft
-                      </>
+                      <FileText className="mr-2 h-4 w-4" />
+                    )}
+                    Insert Analysis into Template
+                  </Button>
+                  
+                  <Button
+                    onClick={handleGenerateAllSections}
+                    disabled={isGenerating}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Wand2 className="mr-2 h-4 w-4" />
+                    )}
+                    Generate All Optional Sections with AI
+                  </Button>
+                  
+                  <Button
+                    onClick={handleSaveDraft}
+                    disabled={isSaving}
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      'Save Draft'
                     )}
                   </Button>
                 </div>

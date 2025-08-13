@@ -41,7 +41,7 @@ export const Header = ({ isAuthenticated = false, onSignOut }: HeaderProps) => {
                 <Link to="/templates">
                   <Button variant="ghost" size="sm" className="flex items-center space-x-2">
                     <FileText className="h-4 w-4" />
-                    <span>Academic Writing</span>
+                    <span>Compose Article</span>
                   </Button>
                 </Link>
                 <Button variant="ghost" size="sm" className="flex items-center space-x-2">
