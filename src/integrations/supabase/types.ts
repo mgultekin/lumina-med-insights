@@ -17,6 +17,7 @@ export type Database = {
       analyses: {
         Row: {
           analysis_result: string | null
+          article_sections: Json | null
           article_text: string | null
           article_title: string | null
           body_region: string | null
@@ -40,6 +41,7 @@ export type Database = {
         }
         Insert: {
           analysis_result?: string | null
+          article_sections?: Json | null
           article_text?: string | null
           article_title?: string | null
           body_region?: string | null
@@ -63,6 +65,7 @@ export type Database = {
         }
         Update: {
           analysis_result?: string | null
+          article_sections?: Json | null
           article_text?: string | null
           article_title?: string | null
           body_region?: string | null
@@ -83,6 +86,45 @@ export type Database = {
           tone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      demo_cases: {
+        Row: {
+          analysis_result: string | null
+          article_sections: Json | null
+          body_region: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_paths: string[]
+          modality: string | null
+          report_text: string | null
+          title: string
+        }
+        Insert: {
+          analysis_result?: string | null
+          article_sections?: Json | null
+          body_region?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_paths?: string[]
+          modality?: string | null
+          report_text?: string | null
+          title: string
+        }
+        Update: {
+          analysis_result?: string | null
+          article_sections?: Json | null
+          body_region?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_paths?: string[]
+          modality?: string | null
+          report_text?: string | null
+          title?: string
         }
         Relationships: []
       }
