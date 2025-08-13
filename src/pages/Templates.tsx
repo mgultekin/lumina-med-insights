@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Layout } from "@/components/layout/Layout";
-import { ArrowLeft, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 const TEMPLATES = [
   {
@@ -48,6 +49,10 @@ interface Analysis {
   analysis_result: string;
   report_text: string;
   template_key: string;
+  article_title: string;
+  tone: string;
+  keywords: any;
+  citations: any;
 }
 
 export const Templates = () => {
@@ -64,8 +69,10 @@ export const Templates = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [articleTitle, setArticleTitle] = useState<string>("");
   const [tone, setTone] = useState<string>("Academic");
-  const [keywords, setKeywords] = useState<string>("");
-  const [citations, setCitations] = useState<string>("");
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [citations, setCitations] = useState<string[]>([]);
+  const [keywordInput, setKeywordInput] = useState<string>("");
+  const [citationInput, setCitationInput] = useState<string>("");
 
   useEffect(() => {
     if (id && user) {
@@ -88,6 +95,18 @@ export const Templates = () => {
       if (data.template_key) {
         setSelectedTemplate(data.template_key);
       }
+      if (data.article_title) {
+        setArticleTitle(data.article_title);
+      }
+      if (data.tone) {
+        setTone(data.tone);
+      }
+      if (data.keywords && Array.isArray(data.keywords)) {
+        setKeywords(data.keywords.filter((k: any) => typeof k === 'string'));
+      }
+      if (data.citations && Array.isArray(data.citations)) {
+        setCitations(data.citations.filter((c: any) => typeof c === 'string'));
+      }
     } catch (error: any) {
       console.error('Error:', error);
       toast({
@@ -101,22 +120,44 @@ export const Templates = () => {
     }
   };
 
+  const handleSaveMetadata = async () => {
+    if (!analysis) return;
+
+    try {
+      const { error } = await supabase
+        .from('analyses')
+        .update({
+          template_key: selectedTemplate,
+          article_title: articleTitle,
+          tone,
+          keywords,
+          citations
+        })
+        .eq('id', analysis.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Metadata Saved",
+        description: "Your article metadata has been saved",
+      });
+    } catch (error: any) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save metadata",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleGenerateArticle = async () => {
     if (!analysis || !selectedTemplate) return;
 
     setIsGenerating(true);
     try {
-      // Save template selection to database first
-      const { error: updateError } = await supabase
-        .from('analyses')
-        .update({ template_key: selectedTemplate })
-        .eq('id', analysis.id);
-
-      if (updateError) throw updateError;
-
-      // Parse keywords and citations
-      const keywordsList = keywords.split(',').map(k => k.trim()).filter(k => k);
-      const citationsList = citations.split('\n').map(c => c.trim()).filter(c => c);
+      // Save metadata first
+      await handleSaveMetadata();
 
       // Call the webhook via edge function
       const { error } = await supabase.functions.invoke('generate-article', {
@@ -125,14 +166,20 @@ export const Templates = () => {
           template_key: selectedTemplate,
           title: articleTitle || undefined,
           tone,
-          keywords: keywordsList,
-          citations: citationsList,
+          keywords,
+          citations,
           use_report: !!analysis.report_text,
           use_analysis: !!analysis.analysis_result
         }
       });
 
       if (error) throw error;
+
+      // Update status
+      await supabase
+        .from('analyses')
+        .update({ status: 'article_draft' })
+        .eq('id', analysis.id);
 
       toast({
         title: "Article Generation Started",
@@ -150,6 +197,28 @@ export const Templates = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const addKeyword = () => {
+    if (keywordInput.trim() && !keywords.includes(keywordInput.trim())) {
+      setKeywords([...keywords, keywordInput.trim()]);
+      setKeywordInput("");
+    }
+  };
+
+  const removeKeyword = (index: number) => {
+    setKeywords(keywords.filter((_, i) => i !== index));
+  };
+
+  const addCitation = () => {
+    if (citationInput.trim() && !citations.includes(citationInput.trim())) {
+      setCitations([...citations, citationInput.trim()]);
+      setCitationInput("");
+    }
+  };
+
+  const removeCitation = (index: number) => {
+    setCitations(citations.filter((_, i) => i !== index));
   };
 
   if (loading) {
@@ -273,49 +342,86 @@ export const Templates = () => {
 
                 <div>
                   <Label htmlFor="keywords">Keywords</Label>
-                  <Input
-                    id="keywords"
-                    value={keywords}
-                    onChange={(e) => setKeywords(e.target.value)}
-                    placeholder="keyword1, keyword2, keyword3"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Comma-separated keywords
-                  </p>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      id="keywords"
+                      value={keywordInput}
+                      onChange={(e) => setKeywordInput(e.target.value)}
+                      placeholder="Enter keyword and press Enter"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addKeyword())}
+                    />
+                    <Button onClick={addKeyword} size="sm" variant="outline">
+                      Add
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {keywords.map((keyword, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                        {keyword}
+                        <X 
+                          className="h-3 w-3 cursor-pointer" 
+                          onClick={() => removeKeyword(index)}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
                   <Label htmlFor="citations">Citations (Optional)</Label>
-                  <Textarea
-                    id="citations"
-                    value={citations}
-                    onChange={(e) => setCitations(e.target.value)}
-                    placeholder="https://example.com/paper1&#10;https://example.com/paper2"
-                    rows={4}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    One URL per line
-                  </p>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      id="citations"
+                      value={citationInput}
+                      onChange={(e) => setCitationInput(e.target.value)}
+                      placeholder="Enter URL and press Enter"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCitation())}
+                    />
+                    <Button onClick={addCitation} size="sm" variant="outline">
+                      Add
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    {citations.map((citation, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                        <span className="text-sm truncate flex-1">{citation}</span>
+                        <X 
+                          className="h-4 w-4 cursor-pointer" 
+                          onClick={() => removeCitation(index)}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <Button
-                  onClick={handleGenerateArticle}
-                  disabled={!selectedTemplate || isGenerating}
-                  variant="medical"
-                  className="w-full"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Generate Article Draft
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => navigate(`/analysis/${id}`)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Analysis
+                  </Button>
+                  <Button
+                    onClick={handleGenerateArticle}
+                    disabled={!selectedTemplate || isGenerating}
+                    variant="medical"
+                    className="flex-1"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Generate Article Draft
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
